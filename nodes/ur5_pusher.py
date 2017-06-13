@@ -20,7 +20,7 @@ import math
 import rclpy
 from rclpy.qos import qos_profile_sensor_data
 
-from std_msgs.msg import String, Float32
+from std_msgs.msg import String, Float32, Bool
 
 import urx
 
@@ -31,6 +31,8 @@ APPROACH_VEL = 0.08
 APPROACH_ACCEL = 0.08
 MAX_X = 0.4
 MIN_X = -0.4
+READY_TOPIC = '~/arm_ready'
+PUSH_TOPIC = '~/push_position'
 
 class UR5Pusher:
     def push_position_callback(self, msg):
@@ -40,13 +42,16 @@ class UR5Pusher:
         print("performing push at x-pos " + str(x_pos))
 
         try:
-            self.robot.movel((x_pos, -0.33, 0.07, math.pi/2, 0, 0), APPROACH_VEL, APPROACH_ACCEL)
+            self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0), APPROACH_VEL, APPROACH_ACCEL)
             self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
             self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
         except:
             # errors get thrown here because of a move timeout. Not really a
             # problem.
             pass
+        msg_out = Bool()
+        msg_out.data = True
+        self.pub.publish(msg_out)
 
     def set_up_robot(self):
         # wait for connection
@@ -56,6 +61,9 @@ class UR5Pusher:
                 self.robot = urx.Robot("192.168.100.100")
                 sleep(0.2)
                 connected = True
+                msg_out = Bool()
+                msg_out.data = connected
+                self.pub.publish(msg_out)
             except:
                 # couldn't connect
                 print("attempting to connect to robot...")
@@ -70,7 +78,8 @@ class UR5Pusher:
         self.set_up_robot()
 
         node = rclpy.create_node('ur5_pusher')
-        sub2 = node.create_subscription(Float32, '~/push_position', self.push_position_callback, qos_profile=qos_profile_sensor_data)
+        sub2 = node.create_subscription(Float32, PUSH_TOPIC, self.push_position_callback, qos_profile=qos_profile_sensor_data)
+        self.pub = node.create_publisher(Bool, READY_TOPIC)
         # assert sub  # prevent unused warning
 
         interrupt = False

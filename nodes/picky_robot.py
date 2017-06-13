@@ -20,27 +20,28 @@ import math
 import rclpy
 from rclpy.qos import qos_profile_sensor_data
 
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool
 from vision_msgs.msg import Detection3DArray
 
 import urx
 
 PUSH_TOPIC = '/ur5_pusher/push_position'
 OBJ_TOPIC = '/detections'
+READY_TOPIC = '/ur5_pusher/arm_ready'
 DELTA_THRESHOLD = 0.03
 STABLE_UPDATE_THRESHOLD = 5
 
 class PickyRobot:
     def object_callback(self, msg):
-        print("detections list received")
+        # print("detections list received")
         for detection in msg.detections:
             if len(detection.results) > 0:
                 hyp = detection.results[0]
                 # do a "transformation" - rotate about z-axis and offset
-                self.process_obj(hyp.id, -(hyp.pose.position.x/2) - 0.15)
+                self.process_obj(hyp.id, -(hyp.pose.position.x/2) - 0.1)
 
     def process_obj(self, id, xpos):
-        if self.push[id]:
+        if self.push[id] and self.arm_ready:
             if abs(xpos-self.last_xpos[id]) < DELTA_THRESHOLD:
                 self.stable_updates[id] += 1
                 # print('stable update')
@@ -54,20 +55,24 @@ class PickyRobot:
                 xpos_msg.data = xpos
                 print('sending push at x-position', xpos_msg.data)
                 self.pub.publish(xpos_msg)
-                sleep(20)
                 self.stable_updates[id] = 0
-                self.last_xpos[id]=10000
+                self.last_xpos[id] = 10000
+                self.arm_ready = False
 
-    def parse_picky_args(self):
-        i_like_pasta = [True, False]
-        i_like_ramen = [False, True]
-        i_like_nothing = [True, True]
+    def parse_picky_args(self, args):
+        push_pasta = [True, False]
+        push_ramen = [False, True]
+        push_everything = [True, True]
 
-        self.push = i_like_nothing
+        self.push = push_everything
         if "ramen" in args:
-            self.push = i_like_ramen
+            self.push = push_ramen
         if "pasta" in args:
-            self.push = i_like_pasta
+            self.push = push_pasta
+
+    def ready_callback(self, msg):
+        self.arm_ready = msg.data
+        print("arm is ready")
 
     def __init__(self, args):
         if args is None:
@@ -76,14 +81,19 @@ class PickyRobot:
 
         self.last_xpos = [10000, 10000]
         self.stable_updates = [0,0]
+        self.arm_ready = True
 
-        self.parse_picky_args()
+        self.parse_picky_args(args)
 
         self.node = rclpy.create_node('picky_robot')
         self.pub = self.node.create_publisher(
             Float32, PUSH_TOPIC)
+        ready_sub = self.node.create_subscription(Bool,
+            READY_TOPIC, self.ready_callback,
+            qos_profile=qos_profile_sensor_data)
         sub = self.node.create_subscription(Detection3DArray,
-            OBJ_TOPIC, self.object_callback, qos_profile=qos_profile_sensor_data)
+            OBJ_TOPIC, self.object_callback,
+            qos_profile=qos_profile_sensor_data)
         print("created pub/sub")
 
         while rclpy.ok():
