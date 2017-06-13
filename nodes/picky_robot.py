@@ -74,7 +74,6 @@ class PickyRobot:
             args = sys.argv
         rclpy.init(args=args)
 
-
         self.last_xpos = [10000, 10000]
         self.stable_updates = [0,0]
 

@@ -1,0 +1,17 @@
+repositories:
+  vision_msgs:
+    type: git
+    url: https://github.com/Kukanani/vision_msgs.git
+    version: ros2
+  picky_robot:
+    type: git
+    url: https://github.com/Kukanani/picky_robot
+    version: ros2
+  ork_renderer
+    type: git
+    url: https://github.com/Kukanani/ork_renderer
+    version: ros2
+  linemod_basic_detector
+    type: git
+    url: https://github.com/Kukanani/linemod_basic_detector.git
+    version: ros2
