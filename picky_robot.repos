@@ -7,11 +7,19 @@ repositories:
     type: git
     url: https://github.com/Kukanani/picky_robot
     version: ros2
-  ork_renderer
+  ork_renderer:
     type: git
     url: https://github.com/Kukanani/ork_renderer
     version: ros2
-  linemod_basic_detector
+  linemod_basic_detector:
     type: git
     url: https://github.com/Kukanani/linemod_basic_detector.git
+    version: ros2
+  python-urx:
+    type: git
+    url: https://github.com/Kukanani/python-urx.git
+    version: ros2
+  ros_astra_camera:
+    type: git
+    url: https://github.com/ros2/ros_astra_camera.git
     version: ros2
