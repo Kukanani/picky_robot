@@ -20,27 +20,67 @@ import math
 import rclpy
 from rclpy.qos import qos_profile_sensor_data
 
-from std_msgs.msg import Float32, Bool
 from vision_msgs.msg import Detection3DArray
 
 import urx
 
-PUSH_TOPIC = '/ur5_pusher/push_position'
+PUSH_DISTANCE = 0.41
+PUSH_VEL = 0.1
+PUSH_ACCEL = 0.1
+APPROACH_VEL = 0.08
+APPROACH_ACCEL = 0.08
+MAX_X = 0.4
+MIN_X = -0.4
 OBJ_TOPIC = '/detections'
-READY_TOPIC = '/ur5_pusher/arm_ready'
 DELTA_THRESHOLD = 0.03
 STABLE_UPDATE_THRESHOLD = 5
 
 class PickyRobot:
+
+    def set_up_robot(self):
+        # wait for connection
+        connected = False
+        while not connected:
+            try:
+                self.robot = urx.Robot("192.168.100.100")
+                sleep(0.2)
+                connected = True
+                msg_out = Bool()
+                msg_out.data = connected
+                self.pub.publish(msg_out)
+            except:
+                # couldn't connect
+                print("attempting to connect to robot...")
+                sleep(5)
+        print('Connected to robot, current tool pose:', self.robot.getl())
+
+    def push_position(self, xpos):
+        if self.arm_ready:
+            self.arm_ready = False
+            x_pos = max(-0.4, min(0.4, xpos))
+            print("performing push at x-pos " + str(x_pos))
+
+            try:
+                self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0), APPROACH_VEL, APPROACH_ACCEL)
+                self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
+                self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
+            except:
+                # errors get thrown here because of a move timeout. Not really a
+                # problem.
+                pass
+            self.arm_ready = True
+
     def object_callback(self, msg):
-        # print("detections list received")
+        print("detections list received with " + str(len(msg.detections)) + " detections")
         for detection in msg.detections:
             if len(detection.results) > 0:
                 hyp = detection.results[0]
                 # do a "transformation" - rotate about z-axis and offset
-                self.process_obj(hyp.id, -(hyp.pose.position.x/2) - 0.1)
+                self.process_obj(hyp.id, -(hyp.pose.position.x/2) - self.x_offset)
+        print("callback over")
 
     def process_obj(self, id, xpos):
+        # print('object detection received')
         if self.push[id] and self.arm_ready:
             if abs(xpos-self.last_xpos[id]) < DELTA_THRESHOLD:
                 self.stable_updates[id] += 1
@@ -50,25 +90,24 @@ class PickyRobot:
                 self.stable_updates[id] = 0
                 # print("stable updates reset")
             if self.stable_updates[id] > STABLE_UPDATE_THRESHOLD:
-                # print('detected a class-0 object, score', hyp.score)
-                xpos_msg = Float32()
-                xpos_msg.data = xpos
-                print('sending push at x-position', xpos_msg.data)
-                self.pub.publish(xpos_msg)
+                self.push_position(xpos)
                 self.stable_updates[id] = 0
                 self.last_xpos[id] = 10000
-                self.arm_ready = False
 
     def parse_picky_args(self, args):
-        push_pasta = [True, False]
-        push_ramen = [False, True]
-        push_everything = [True, True]
+        push_ramen = [True, False]
+        push_pasta = [False, True]
+        push_both = [True, True]
 
-        self.push = push_everything
+        self.push = push_both
         if "ramen" in args:
             self.push = push_ramen
         if "pasta" in args:
             self.push = push_pasta
+        if "x_offset" in args:
+            self.x_offset = float(args.index("x_offset")+1)
+        else:
+            self.x_offset = 0.1
 
     def ready_callback(self, msg):
         self.arm_ready = msg.data
@@ -77,28 +116,31 @@ class PickyRobot:
     def __init__(self, args):
         if args is None:
             args = sys.argv
-        rclpy.init(args=args)
+        self.parse_picky_args(args)
+        rclpy.init()
+
+        self.set_up_robot()
 
         self.last_xpos = [10000, 10000]
         self.stable_updates = [0,0]
         self.arm_ready = True
 
-        self.parse_picky_args(args)
-
         self.node = rclpy.create_node('picky_robot')
-        self.pub = self.node.create_publisher(
-            Float32, PUSH_TOPIC)
-        ready_sub = self.node.create_subscription(Bool,
-            READY_TOPIC, self.ready_callback,
-            qos_profile=qos_profile_sensor_data)
         sub = self.node.create_subscription(Detection3DArray,
             OBJ_TOPIC, self.object_callback,
             qos_profile=qos_profile_sensor_data)
         print("created pub/sub")
 
-        while rclpy.ok():
-            rclpy.spin_once(self.node)
-            sleep(0.1)
+        interrupt = False
+        while rclpy.ok() and not interrupt:
+            try:
+                rclpy.spin_once(self.node)
+                sleep(0.1)
+            except KeyboardInterrupt:
+                interrupt = True
+
+        self.robot.close()
+        print('Disconnected from robot.')
 
 def main(args=None):
     pr = PickyRobot(args)
