@@ -14,36 +14,46 @@
 # limitations under the License.
 
 import sys
-from time import sleep
+from time import sleep, time
 import math
+from pprint import pprint
 
 import rclpy
 from rclpy.qos import qos_profile_sensor_data
 
 from vision_msgs.msg import Detection3DArray
+from sensor_msgs.msg import JointState
 
 import urx
 
+JOINT_STATE_TOPIC = "/joint_states"
 PUSH_DISTANCE = 0.41
-PUSH_VEL = 0.1
-PUSH_ACCEL = 0.1
+PUSH_VEL = 0.15
+PUSH_ACCEL = 0.15
 APPROACH_VEL = 0.08
 APPROACH_ACCEL = 0.08
 MAX_X = 0.4
 MIN_X = -0.4
 OBJ_TOPIC = '/detections'
+READY_TOPIC = '~/arm_ready'
+PUSH_TOPIC = '~/push_position'
 DELTA_THRESHOLD = 0.03
 STABLE_UPDATE_THRESHOLD = 5
+JOINT_NAMES_MSG=  ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
+                   "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
+
+current_nano_time = lambda: int(round(time() * 1e9 % 1e9))
+current_sec_time = lambda: int(time())
 
 class PickyRobot:
 
     def set_up_robot(self):
+        print("attempting to connect to robot...")
         # wait for connection
         connected = False
         while not connected:
             try:
                 self.robot = urx.Robot("192.168.100.100")
-                sleep(0.2)
                 connected = True
                 msg_out = Bool()
                 msg_out.data = connected
@@ -51,8 +61,16 @@ class PickyRobot:
             except:
                 # couldn't connect
                 print("attempting to connect to robot...")
-                sleep(5)
         print('Connected to robot, current tool pose:', self.robot.getl())
+
+    def update_joints(self):
+        # print("updating joints...")
+        msg = JointState()
+        msg.header.stamp.sec = current_sec_time()
+        msg.header.stamp.nanosec = current_nano_time()
+        msg.name = JOINT_NAMES_MSG
+        msg.position = self.robot.getj()
+        self.joint_state_pub.publish(msg)
 
     def push_position(self, xpos):
         if self.arm_ready:
@@ -61,13 +79,22 @@ class PickyRobot:
             print("performing push at x-pos " + str(x_pos))
 
             try:
-                self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0), APPROACH_VEL, APPROACH_ACCEL)
-                self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
-                self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
-            except:
+                print("move 1")
+                self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0), APPROACH_ACCEL, APPROACH_VEL, False)
+                while self.robot.is_moving():
+                    self.update_joints()
+                print("move 2")
+                self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_ACCEL, PUSH_VEL, False)
+                while self.robot.is_moving():
+                    self.update_joints()
+                print("move 3")
+                self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_ACCEL, PUSH_VEL, False)
+                while self.robot.is_moving():
+                    self.update_joints()
+            except Exception as e:
                 # errors get thrown here because of a move timeout. Not really a
                 # problem.
-                pass
+                print(str(e))
             self.arm_ready = True
 
     def object_callback(self, msg):
@@ -77,7 +104,7 @@ class PickyRobot:
                 hyp = detection.results[0]
                 # do a "transformation" - rotate about z-axis and offset
                 self.process_obj(hyp.id, -(hyp.pose.position.x/2) - self.x_offset)
-        print("callback over")
+        # print("callback over")
 
     def process_obj(self, id, xpos):
         # print('object detection received')
@@ -129,13 +156,15 @@ class PickyRobot:
         sub = self.node.create_subscription(Detection3DArray,
             OBJ_TOPIC, self.object_callback,
             qos_profile=qos_profile_sensor_data)
+        self.joint_state_pub = self.node.create_publisher(JointState,
+            JOINT_STATE_TOPIC)
         print("created pub/sub")
 
         interrupt = False
         while rclpy.ok() and not interrupt:
             try:
-                rclpy.spin_once(self.node)
-                sleep(0.1)
+                rclpy.spin_once(self.node, timeout_sec=0.01)
+                self.update_joints()
             except KeyboardInterrupt:
                 interrupt = True
 

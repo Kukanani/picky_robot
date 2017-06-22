@@ -82,15 +82,17 @@ install(TARGETS
 
 install(
   FILES
-    nodes/ur5_pusher.py
     nodes/picky_robot.py
   DESTINATION bin
   )
 
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
 # ament_python_install_module(
-#   nodes/picky_robot.py DESTINATION_SUFFIX "${PROJECT_NAME}")
-ament_python_install_module(
-  nodes/ur5_pusher.py
-  DESTINATION_SUFFIX "${PROJECT_NAME}")
+#   nodes/picky_robot.py
+#   DESTINATION_SUFFIX "${PROJECT_NAME}")
 
 ament_package()

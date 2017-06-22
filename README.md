@@ -54,9 +54,7 @@ Then, build your workspace.
     virtual renders of objects on-the-fly. We used absolute paths, which is not
     reusable, but ensures that the pipeline can be run from any directory.
     Relative path support is a major area where the demo could be improved.
-  - In one terminal, run `ur5_pusher.py`. This connects to and controls the
-    robot.
-  - In a second terminal, run `linemod_pipeline <your_template_file> b`.
+  - In a terminal, run `linemod_pipeline <your_template_file> b`.
     Detection windows should appear, showing a camera feed with detected
     templates superimposed.
   - In a third terminal, run `picky_robot.py`. This filters the detection
