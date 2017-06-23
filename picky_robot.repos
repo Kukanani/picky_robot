@@ -23,3 +23,7 @@ repositories:
     type: git
     url: https://github.com/ros2/ros_astra_camera.git
     version: ros2
+  turtlebot2_demo:
+    type: git
+    url: https://github.com/ros2/turtlebot2_demo.git
+    version: master
