@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import sys
+import yaml
 
 from launch import LaunchDescriptor
 from launch.launcher import DefaultLauncher
@@ -21,8 +23,27 @@ file_path = os.path.dirname(os.path.realpath(__file__))
 
 
 def launch():
-    ld = LaunchDescriptor()
+    # parse a YAML file to get the calibration
+    if len(sys.argv) == 2:
+        calib_yaml_path = sys.argv[1]
+    elif len(sys.argv) > 2:
+        print("usage: ur5_launch.py [calibration_yaml_file_path]")
+        exit()
+    else:
+        calib_yaml_path = os.path.dirname(os.path.realpath(__file__)) + os.sep + "osrf_calib.yaml"
 
+    with open(calib_yaml_path, 'r') as f:
+        doc = yaml.load(f)
+        x_offset = doc["x"]
+        y_offset = doc["y"]
+        z_offset = doc["z"]
+        yaw_offset = doc["yaw"]
+        pitch_offset = doc["pitch"]
+        roll_offset = doc["roll"]
+        parent_frame = doc["parent_frame"]
+        child_frame = doc["child_frame"]
+
+    ld = LaunchDescriptor()
     ld.add_process(
         cmd=['robot_state_publisher', os.path.join(file_path, 'ur5.urdf')]
     )
@@ -33,10 +54,19 @@ def launch():
 
     ld.add_process(
         cmd=['static_transform_publisher',
-          '0.12', '-0.03', '0.95',
-          '0', '0', '-2.6',
-          'world',
-          'openni_color_optical_frame']
+             str(doc["x"]),
+             str(doc["y"]),
+             str(doc["z"]),
+             str(doc["yaw"]),
+             str(doc["pitch"]),
+             str(doc["roll"]),
+             str(doc["parent_frame"]),
+             str(doc["child_frame"])
+        ]
+          # '0.12', '-0.03', '0.95',
+          # '0', '0', '-2.6',
+          # 'world',
+          # 'openni_color_optical_frame']
     )
 
     ld.add_process(

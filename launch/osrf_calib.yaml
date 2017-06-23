@@ -1,0 +1,8 @@
+x: 0.12
+y: -0.03
+z: 0.95
+yaw: 0
+pitch: 0
+roll: -2.6
+parent_frame: world
+child_frame: openni_color_optical_frame
