@@ -74,8 +74,14 @@ RUN vcs import src < ros2.repos
 RUN cd src/ros2/rosidl && git pull && git checkout fix_destroy_segfault
 RUN cd src/ros2/rclpy && git pull && git checkout fix_destroy_segfault
 
+# set up picky robot demos
+
 RUN wget https://raw.githubusercontent.com/Kukanani/picky_robot/ros2/picky_robot.repos
-RUN vcs import src < picky_robot.repos
+RUN vcs import src/ros2 < picky_robot.repos
+
+# TODO temporary fix to avoid dependency on kobuki drivers
+RUN touch src/ros2/turtlebot2_demo/turtlebot2_follower/AMENT_IGNORE
+RUN touch src/ros2/turtlebot2_demo/turtlebot2_drivers/AMENT_IGNORE
 
 WORKDIR $ROS2_WS
 RUN src/ament/ament_tools/scripts/ament.py build --symlink-install --isolated --parallel
