@@ -15,24 +15,47 @@
 import os
 import sys
 import yaml
+import argparse
 
 from launch import LaunchDescriptor
 from launch.launcher import DefaultLauncher
+
+from ament_index_python.packages import get_package_share_directory
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 
 
 def launch():
-    # parse a YAML file to get the calibration
-    if len(sys.argv) == 2:
-        calib_yaml_path = sys.argv[1]
-    elif len(sys.argv) > 2:
-        print("usage: ur5_launch.py [calibration_yaml_file_path]")
-        exit()
-    else:
-        calib_yaml_path = os.path.dirname(os.path.realpath(__file__)) + os.sep + "osrf_calib.yaml"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-t", "--linemod_templates", help="Path to a .yml file"
+                        "containing the LINEMOD templates for the objects to "
+                        "be detected. These could be generated with virtual "
+                        "kinect (real) training methods. The file must "
+                        "contain sequential class IDs and mesh paths for "
+                        "each class to allow the pipeline to execute "
+                        "correctly. ", type=str)
+    parser.add_argument("-c", "--calibration_file", help="Path to a YAML "
+                        "calibration file definining the transform from the "
+                        "world frame to the camera frame used to collect "
+                        "vision data. Please see launch/osrf_calib.yaml for "
+                        "an example.", type=str)
 
-    with open(calib_yaml_path, 'r') as f:
+    args = parser.parse_args()
+
+    if args.linemod_templates:
+        linemod_templates = args.linemod_templates
+    else:
+        linemod_templates = (get_package_share_directory("picky_robot") +
+                             os.sep + 'linemod/cupnoodles_penne.yml')
+
+    if args.calibration_file:
+        calibration_file = args.calibration_file
+    else:
+        calibration_file = (get_package_share_directory("picky_robot") +
+                            os.sep + "launch" + os.sep + "osrf_calib.yaml")
+
+    # parse a YAML file to get the calibration
+    with open(calibration_file, 'r') as f:
         doc = yaml.load(f)
         x_offset = doc["x"]
         y_offset = doc["y"]
@@ -45,7 +68,9 @@ def launch():
 
     ld = LaunchDescriptor()
     ld.add_process(
-        cmd=['robot_state_publisher', os.path.join(file_path, 'ur5.urdf')]
+        cmd=['robot_state_publisher',
+             (get_package_share_directory("picky_robot") + os.sep + "launch" +
+              os.sep + "ur5.urdf")]
     )
 
     ld.add_process(
@@ -62,15 +87,15 @@ def launch():
              str(doc["roll"]),
              str(doc["parent_frame"]),
              str(doc["child_frame"])
-        ]
-          # '0.12', '-0.03', '0.95',
-          # '0', '0', '-2.6',
-          # 'world',
-          # 'openni_color_optical_frame']
+             ]
+        # '0.12', '-0.03', '0.95',
+        # '0', '0', '-2.6',
+        # 'world',
+        # 'openni_color_optical_frame']
     )
 
     ld.add_process(
-        cmd=['linemod_pipeline', 'linemod/cupnoodles_penne.yml', 'b']
+        cmd=['linemod_pipeline', linemod_templates, 'b', 'b']
     )
 
     ld.add_process(
