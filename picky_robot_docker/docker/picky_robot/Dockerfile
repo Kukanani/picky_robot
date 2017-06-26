@@ -71,17 +71,22 @@ RUN wget https://raw.githubusercontent.com/ros2/ros2/master/ros2.repos
 RUN vcs import src < ros2.repos
 
 # TODO temporary fix for python memory errors
-RUN cd src/ros2/rosidl && git pull && git checkout fix_destroy_segfault
-RUN cd src/ros2/rclpy && git pull && git checkout fix_destroy_segfault
+# RUN cd src/ros2/rosidl && git pull && git checkout fix_destroy_segfault
+# RUN cd src/ros2/rclpy && git pull && git checkout fix_destroy_segfault
 
 # set up picky robot demos
 
 RUN wget https://raw.githubusercontent.com/Kukanani/picky_robot/ros2/picky_robot.repos
 RUN vcs import src/ros2 < picky_robot.repos
 
+# LINEMOD data and meshes
+RUN git clone https://github.com/Kukanani/picky_robot_data.git
+
 # TODO temporary fix to avoid dependency on kobuki drivers
 RUN touch src/ros2/turtlebot2_demo/turtlebot2_follower/AMENT_IGNORE
 RUN touch src/ros2/turtlebot2_demo/turtlebot2_drivers/AMENT_IGNORE
+
+# build everything
 
 WORKDIR $ROS2_WS
 RUN src/ament/ament_tools/scripts/ament.py build --symlink-install --isolated --parallel
@@ -89,3 +94,8 @@ RUN src/ament/ament_tools/scripts/ament.py build --symlink-install --isolated --
 RUN echo "export ROS2_WS=/root/picky_robot_ws" >> /root/.bashrc && \
     echo "export RMW_IMPLEMENTATION=rmw_fastrtps_cpp" >> /root/.bashrc && \
     echo "source $ROS2_WS/install_isolated/local_setup.bash" >> /root/.bashrc
+
+
+LABEL com.nvidia.volumes.needed="nvidia_driver"
+ENV PATH /usr/local/nvidia/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
