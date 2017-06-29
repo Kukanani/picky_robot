@@ -35,8 +35,10 @@ And, once inside the container, run
 
 ```
 cd picky_robot_data
-python3 ../install_isolated/picky_robot/share/picky_robot/launch/ur5_launch.py --linemod_templates cupnoodles_penne.yml
+python3 ../install_isolated/picky_robot/share/picky_robot/launch/ur5_launch.py --linemod_templates cupnoodles_penne.yml -r true -p true
 ```
+
+The `-p true` and `-r true` flags enable manipulation of the two different object types.
 
 ### Building Manually
 
