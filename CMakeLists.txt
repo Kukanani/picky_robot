@@ -78,13 +78,14 @@ target_link_libraries(linemod_pipeline -lOpenNI2Orbbec)
 
 install(TARGETS
   linemod_pipeline
-  DESTINATION bin)
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(
   FILES
     nodes/picky_robot.py
-  DESTINATION bin
-  )
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(
   DIRECTORY launch

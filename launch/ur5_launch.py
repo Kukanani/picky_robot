@@ -21,6 +21,7 @@ from launch import LaunchDescriptor
 from launch.launcher import DefaultLauncher
 
 from ament_index_python.packages import get_package_share_directory
+from ros2run.api import get_executable_path
 
 file_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -39,7 +40,10 @@ def launch():
                         "world frame to the camera frame used to collect "
                         "vision data. Please see launch/osrf_calib.yaml for "
                         "an example.", type=str)
-
+    parser.add_argument("-p", "--push-pasta", help="Push pasta boxes off of "
+                        "the table.", type=bool)
+    parser.add_argument("-r", "--push-ramen", help="Push ramen containers off "
+                        "of the table.", type=bool)
     args = parser.parse_args()
 
     if args.linemod_templates:
@@ -53,6 +57,28 @@ def launch():
     else:
         calibration_file = (get_package_share_directory("picky_robot") +
                             os.sep + "launch" + os.sep + "osrf_calib.yaml")
+
+    if args.push_pasta:
+        push_pasta = args.push_pasta
+    else:
+        push_pasta = False
+
+    if args.push_ramen:
+        push_ramen = args.push_ramen
+    else:
+        push_ramen = False
+
+    if not push_pasta and not push_ramen:
+        push_ramen = True
+        push_pasta = True
+        return
+
+    if push_pasta and push_ramen:
+        push_flag = ""
+    elif push_pasta:
+        push_flag = "pasta"
+    else:
+        push_flag = "ramen"
 
     # parse a YAML file to get the calibration
     with open(calibration_file, 'r') as f:
@@ -68,17 +94,15 @@ def launch():
 
     ld = LaunchDescriptor()
     ld.add_process(
-        cmd=['robot_state_publisher',
+        cmd=[get_executable_path(package_name='robot_state_publisher',
+                                 executable_name='robot_state_publisher'),
              (get_package_share_directory("picky_robot") + os.sep + "launch" +
               os.sep + "ur5.urdf")]
     )
 
     ld.add_process(
-        cmd=['picky_robot.py']
-    )
-
-    ld.add_process(
-        cmd=['static_transform_publisher',
+        cmd=[get_executable_path(package_name='tf2_ros',
+                                 executable_name='static_transform_publisher'),
              str(doc["x"]),
              str(doc["y"]),
              str(doc["z"]),
@@ -95,11 +119,20 @@ def launch():
     )
 
     ld.add_process(
-        cmd=['linemod_pipeline', linemod_templates, 'b', 'b']
+        cmd=[get_executable_path(package_name='depth_to_pointcloud',
+                                 executable_name='depth_to_pointcloud_node')]
     )
 
     ld.add_process(
-        cmd=['depth_to_pointcloud_node']
+        cmd=[get_executable_path(package_name='picky_robot',
+                                 executable_name='linemod_pipeline'),
+             linemod_templates, 'b', 'b']
+    )
+
+    ld.add_process(
+        cmd=[get_executable_path(package_name='picky_robot',
+                                 executable_name='picky_robot.py'),
+             push_flag]
     )
 
     launcher = DefaultLauncher()

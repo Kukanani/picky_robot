@@ -39,6 +39,7 @@
   <exec_depend>tf2_geometry_msgs</exec_depend>
   <exec_depend>linemod_basic_detector</exec_depend>
   <exec_depend>intra_process_demo</exec_depend>
+  <exec_depend>ros2run</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

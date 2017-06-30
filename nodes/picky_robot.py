@@ -39,11 +39,9 @@ READY_TOPIC = '~/arm_ready'
 PUSH_TOPIC = '~/push_position'
 DELTA_THRESHOLD = 0.03
 STABLE_UPDATE_THRESHOLD = 5
-JOINT_NAMES_MSG=  ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
+JOINT_NAMES_MSG = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
                    "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
 
-current_nano_time = lambda: int(round(time() * 1e9 % 1e9))
-current_sec_time = lambda: int(time())
 
 class PickyRobot:
 
@@ -66,8 +64,8 @@ class PickyRobot:
     def update_joints(self):
         # print("updating joints...")
         msg = JointState()
-        msg.header.stamp.sec = current_sec_time()
-        msg.header.stamp.nanosec = current_nano_time()
+        msg.header.stamp.sec = int(time())
+        msg.header.stamp.nanosec = int(round(time() * 1e9 % 1e9))
         msg.name = JOINT_NAMES_MSG
         msg.position = self.robot.getj()
         self.joint_state_pub.publish(msg)
@@ -80,30 +78,35 @@ class PickyRobot:
 
             try:
                 print("move 1")
-                self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0), APPROACH_ACCEL, APPROACH_VEL, False)
+                self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0),
+                                 APPROACH_ACCEL, APPROACH_VEL, False)
                 while self.robot.is_moving():
                     self.update_joints()
                 print("move 2")
-                self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_ACCEL, PUSH_VEL, False)
+                self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_ACCEL,
+                                          PUSH_VEL, False)
                 while self.robot.is_moving():
                     self.update_joints()
                 print("move 3")
-                self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_ACCEL, PUSH_VEL, False)
+                self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_ACCEL,
+                                          PUSH_VEL, False)
                 while self.robot.is_moving():
                     self.update_joints()
             except Exception as e:
-                # errors get thrown here because of a move timeout. Not really a
-                # problem.
+                # errors get thrown here because of a move timeout. Not really
+                # a problem.
                 print(str(e))
             self.arm_ready = True
 
     def object_callback(self, msg):
-        print("detections list received with " + str(len(msg.detections)) + " detections")
+        print("detections list received with " + str(len(msg.detections)) +
+              " detections")
         for detection in msg.detections:
             if len(detection.results) > 0:
                 hyp = detection.results[0]
                 # do a "transformation" - rotate about z-axis and offset
-                self.process_obj(hyp.id, -(hyp.pose.position.x/2) - self.x_offset)
+                self.process_obj(hyp.id,
+                                 -(hyp.pose.position.x/2) - self.x_offset)
         # print("callback over")
 
     def process_obj(self, id, xpos):
@@ -149,15 +152,16 @@ class PickyRobot:
         self.set_up_robot()
 
         self.last_xpos = [10000, 10000]
-        self.stable_updates = [0,0]
+        self.stable_updates = [0, 0]
         self.arm_ready = True
 
         self.node = rclpy.create_node('picky_robot')
-        sub = self.node.create_subscription(Detection3DArray,
+        sub = self.node.create_subscription(
+            Detection3DArray,
             OBJ_TOPIC, self.object_callback,
             qos_profile=qos_profile_sensor_data)
         self.joint_state_pub = self.node.create_publisher(JointState,
-            JOINT_STATE_TOPIC)
+                                                          JOINT_STATE_TOPIC)
         print("created pub/sub")
 
         interrupt = False
@@ -170,6 +174,7 @@ class PickyRobot:
 
         self.robot.close()
         print('Disconnected from robot.')
+
 
 def main(args=None):
     pr = PickyRobot(args)
