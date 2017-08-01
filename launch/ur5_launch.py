@@ -71,7 +71,6 @@ def launch():
     if not push_pasta and not push_ramen:
         push_ramen = True
         push_pasta = True
-        return
 
     if push_pasta and push_ramen:
         push_flag = ""
@@ -112,10 +111,6 @@ def launch():
              str(doc["parent_frame"]),
              str(doc["child_frame"])
              ]
-        # '0.12', '-0.03', '0.95',
-        # '0', '0', '-2.6',
-        # 'world',
-        # 'openni_color_optical_frame']
     )
 
     ld.add_process(
@@ -137,6 +132,7 @@ def launch():
 
     launcher = DefaultLauncher()
     launcher.add_launch_descriptor(ld)
+    print("launching...")
     rc = launcher.launch()
 
     assert rc == 0, "The launch file failed with exit code '" + str(rc) + "'. "

@@ -24,6 +24,7 @@ from std_msgs.msg import String, Float32, Bool
 
 import urx
 
+# TODO(kukanani): These magic constants can be replaced by ROS params.
 PUSH_DISTANCE = 0.41
 PUSH_VEL = 0.1
 PUSH_ACCEL = 0.1
@@ -33,21 +34,25 @@ MAX_X = 0.4
 MIN_X = -0.4
 READY_TOPIC = '~/arm_ready'
 PUSH_TOPIC = '~/push_position'
+ROBOT_IP = "192.168.100.100"
 
 class UR5Pusher:
     def push_position_callback(self, msg):
         print("push request received at x-pos " + str(msg.data))
         # self.robot.translate_tool((0,0,0.01))
-        x_pos = max(-0.4, min(0.4, msg.data))
+        x_pos = max(MIN_X, min(MAX_X, msg.data))
         print("performing push at x-pos " + str(x_pos))
 
         try:
-            self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0), APPROACH_VEL, APPROACH_ACCEL)
-            self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
-            self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_VEL, PUSH_ACCEL)
+            self.robot.movel((x_pos, -0.33, 0.05, math.pi/2, 0, 0),
+                             APPROACH_VEL, APPROACH_ACCEL)
+            self.robot.translate_tool((0, 0, PUSH_DISTANCE), PUSH_VEL,
+                                      PUSH_ACCEL)
+            self.robot.translate_tool((0, 0, -PUSH_DISTANCE), PUSH_VEL,
+                                      PUSH_ACCEL)
         except:
             # errors get thrown here because of a move timeout. Not really a
-            # problem.
+            # problem if this happens, so we pass.
             pass
         msg_out = Bool()
         msg_out.data = True
@@ -58,7 +63,7 @@ class UR5Pusher:
         connected = False
         while not connected:
             try:
-                self.robot = urx.Robot("192.168.100.100")
+                self.robot = urx.Robot(ROBOT_IP)
                 sleep(0.2)
                 connected = True
                 msg_out = Bool()
@@ -78,7 +83,9 @@ class UR5Pusher:
         self.set_up_robot()
 
         node = rclpy.create_node('ur5_pusher')
-        sub2 = node.create_subscription(Float32, PUSH_TOPIC, self.push_position_callback, qos_profile=qos_profile_sensor_data)
+        sub2 = node.create_subscription(Float32, PUSH_TOPIC,
+                                        self.push_position_callback,
+                                        qos_profile=qos_profile_sensor_data)
         self.pub = node.create_publisher(Bool, READY_TOPIC)
         # assert sub  # prevent unused warning
 

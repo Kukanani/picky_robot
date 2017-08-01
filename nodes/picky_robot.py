@@ -26,6 +26,7 @@ from sensor_msgs.msg import JointState
 
 import urx
 
+# TODO(kukanani): These magic constants can be replaced by ROS params.
 JOINT_STATE_TOPIC = "/joint_states"
 PUSH_DISTANCE = 0.41
 PUSH_VEL = 0.15
@@ -41,7 +42,7 @@ DELTA_THRESHOLD = 0.03
 STABLE_UPDATE_THRESHOLD = 5
 JOINT_NAMES_MSG = ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
                    "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"]
-
+ROBOT_IP = "192.168.100.100"
 
 class PickyRobot:
 
@@ -51,7 +52,7 @@ class PickyRobot:
         connected = False
         while not connected:
             try:
-                self.robot = urx.Robot("192.168.100.100")
+                self.robot = urx.Robot(ROBOT_IP)
                 connected = True
                 msg_out = Bool()
                 msg_out.data = connected
@@ -73,7 +74,7 @@ class PickyRobot:
     def push_position(self, xpos):
         if self.arm_ready:
             self.arm_ready = False
-            x_pos = max(-0.4, min(0.4, xpos))
+            x_pos = max(MIN_X, min(MAX_X, xpos))
             print("performing push at x-pos " + str(x_pos))
 
             try:
