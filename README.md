@@ -19,7 +19,7 @@ ethernet (robot).
 To build the docker container, navigate to the `picky_robot_docker/docker`
 directory and run the command
 
-````
+```
 ./build_picky_robot_docker.sh
 ```
 
