@@ -40,12 +40,36 @@ python3 ../install_isolated/picky_robot/share/launch/ur5_launch.py --linemod_tem
 
 The `-p true` and `-r true` flags enable manipulation of the two different object types.
 
+If you are building manually,
+
+### Running the demo
+
+#### Training
+
+  - You will need to acquire training data from the `linemod_basic_detector`,
+    please see that package for more details. The template YAML files must point
+    at valid mesh paths for the detection pipeline to work, since it does
+    virtual renders of objects on-the-fly. It's a good idea to store the mesh
+    files next to the .yml file, in the same directory.
+
+#### Testing
+
+  - You should run from the same folder that contains your .yml and mesh files.
+  - In a terminal, run `ur5_launch.py --linemod_templates <your_template_file>`.
+    Detection windows should appear, showing a camera feed with detected
+    templates superimposed. When an object's detection is stable for a few frames,
+    the robot should push it off the table.
+  - The transformation between the camera frame and the world frame can be changed
+    by using a YAML file and passing it to the launch script as a command-line
+    argument. Please see `ur5_launch.py --help` and
+    `picky_robot/launch/osrf_calib.yaml` for more details.
+
 ### Building Manually
 
 This method will give you the most control, but there are quite a few installation
 steps.
 
-## Dependencies
+#### Dependencies
 
   - You should have a ROS 2 workspace: follow the [installation instructions](https://github.com/ros2/ros2/wiki/Installation).
   - A suitable depth camera library: this demo uses defaults that work
@@ -86,7 +110,7 @@ pip3 install --upgrade pip
 pip3 install numpy math3d yaml
 ```
 
-### Installation (Ubuntu 16.04)
+#### Installation (Ubuntu 16.04)
 
 Install dependencies (above).
 
@@ -98,25 +122,3 @@ vcs import src < ros2.repos
 ```
 
 Then, build your workspace.
-
-### Run the demo
-
-#### Training
-
-  - You will need to acquire training data from the `linemod_basic_detector`,
-    please see that package for more details. The template YAML files must point
-    at valid mesh paths for the detection pipeline to work, since it does
-    virtual renders of objects on-the-fly. It's a good idea to store the mesh
-    files next to the .yml file, in the same directory.
-
-#### Testing
-
-  - You should run from the same folder that contains your .yml and mesh files.
-  - In a terminal, run `ur5_launch.py --linemod_templates <your_template_file>`.
-    Detection windows should appear, showing a camera feed with detected
-    templates superimposed. When an object's detection is stable for a few frames,
-    the robot should push it off the table.
-  - The transformation between the camera frame and the world frame can be changed
-    by using a YAML file and passing it to the launch script as a command-line
-    argument. Please see `ur5_launch.py --help` and
-    `picky_robot/launch/osrf_calib.yaml` for more details.
